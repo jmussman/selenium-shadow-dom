@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!-- index.html
+	Copyright © 2020 Joel Mussman. All rights reserved.
+-->
+
+<html>
+<head>
+	<title>My Component Test</title>
+	<link rel="stylesheet" type="text/css" href="assets/style/application.css" />
+	<script src="assets/script/custom-button.js"></script>
+</head>
+<body>
+<header>
+	<div class="header">
+		<img src="assets/images/selshadowdom-logo.png" alt="Logo" />
+	</div>
+</header>
+<div class="content">
+	<div class="page-content">
+		<div class="spacer"></div>
+		<h2>Description</h2>
+		<p>These three buttons are set up with no Shadow DOM, open-mode Shadow DOM, and closed-mode Shadow DOM.
+			The first button has a different background color, because the application.css file applies to it.
+			The other two buttons show with their default color backgrounds that they block application of the CSS,
+			which is the whole point of the Shadow DOM.</p>
+		<p>These support these Selenium unit tests:</p>
+		<ul>
+			<li>Selenium can select an element anywhere in the Light DOM (the regular browser DOM).</li>
+			<li>Selenium cannot select into the component when there it has a Shadow DOM (this is a negative test).</li>
+			<li>Selenium can use JavaScript to find the root node in open-mode, and then find elements descending from that.</li>
+			<li>Selenium cannot select the root node in closed-mode (this is a negative test).</li>
+		</ul>
+		<custom-button
+			id="custom-button-one"
+			shadow-mode="none"
+			identifier="button-one"
+			text="id=button-one, no shadow-dom: click me!"
+			selected-text="id=button-one, no shadow-dom: selected!"
+		></custom-button>
+		<custom-button
+			id="custom-button-two"
+			shadow-mode="open"
+			identifier="button-two"
+			text="id=button-two, open shadow-dom: click me!"
+			selected-text="id=button-two, open shadow-dom: selected!"
+		></custom-button>
+		<custom-button
+			id="custom-button-three"
+			shadow-mode="closed"
+			identifier="button-three"
+			text="id=button-three, closed shadow-dom: click me!"
+			selected-text="id=button-three, closed shadow-dom: selected!"
+		></custom-button>
+	</div>
+</div>
+<footer>
+	<div class="footer">
+		<div class="copyright">
+			Copyright &copy; 2020 Joel Mussman. All rights reserved.
+		</div>
+	</div>
+</footer>
+</body>
+</html>

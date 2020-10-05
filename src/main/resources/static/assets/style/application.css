@@ -1,0 +1,56 @@
+/* site.css
+    Copyright © Joel Mussman. All rights reserved.
+ */
+
+html, body {
+    margin: 0;
+    font-family: arial, arial, helvetica, sans-serif;
+    font-size: 14pt;
+    color: black;
+
+}
+div.header {
+    width: 100%;
+    height: 150px;
+    background-color: lightskyblue;
+}
+
+div.content {
+    margin: 0;
+    width: 100%;
+    background-color: #eeeeee;
+}
+
+div.page-content {
+    width: 1346px;
+    margin: 0 auto;
+    padding: 10px;
+    background-color: white;
+    min-height: calc(100vh - 210px);    /* 100% - 150px (header) - 30px (footer) - -20px (padding) - 10px (calculated margins) */
+}
+
+div.spacer {
+    height: 1px;
+}
+
+div.footer {
+    margin: 0;
+    width: 100%;
+    height: 40px;
+    background-color: darkblue;
+}
+
+div.copyright {
+    padding-top: 2ex;
+    text-align: center;
+    vertical-align: middle;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 9pt;
+    color: white;
+}
+
+/* This is the only CSS involved in the tests, it reaches the first button but not the other two */
+
+button {
+    background-color: skyblue;
+}
