@@ -13,9 +13,13 @@ This project consists of JUnit 5 tests using Selenium with custom web elements t
 ## Notes
 
 Import the project as a Maven project in your IDE.
+This is a Spring boot web application project.
 The application context is "selshadowdom" and the port is 8081 (all configurable in the application.properties file).
-Run the application and launch the page from "http://localhost:8081", there is a detailed explanation of the page
-and the tests on that page.
+
+Find the src/main/java/com/wonderfulwidgets/examples/selshadowdom/SelShadowDom application class.
+Right click and run the application, and then in the browser visit the page "http://localhost:8081".
+There is a detailed explanation of the application and the tests on that page.
+Shutdown the application when you are finished.
 
 Explore and run the JUnit tests to understand how Selenium interacts with elements using a Shadow DOM.
 
