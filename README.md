@@ -17,7 +17,7 @@ This is a Spring boot web application project.
 The application context is "selshadowdom" and the port is 8081 (all configurable in the application.properties file).
 
 Find the src/main/java/com/wonderfulwidgets/examples/selshadowdom/SelShadowDom application class.
-Right click and run the application, and then in the browser visit the page "http://localhost:8081".
+Right click and run the application, and then in the browser visit the page "http://localhost:8081/selshadowdom/".
 There is a detailed explanation of the application and the tests on that page.
 Shutdown the application when you are finished.
 
