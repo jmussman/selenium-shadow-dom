@@ -31,6 +31,9 @@ trivial to replace that function in the browser with one that blocks closed mode
 The trick is to inject this into the browser before the page loads; the last JUnit test shows you how to
 achieve that with Selenium.
 
+If you want to achieve the same results in Selenium 3 you may do so with a Reflection-based hack.
+Look at the alternate branch "three-hack" in this repository.
+
 ## Notes
 
 Import the project as a Maven project in your IDE.

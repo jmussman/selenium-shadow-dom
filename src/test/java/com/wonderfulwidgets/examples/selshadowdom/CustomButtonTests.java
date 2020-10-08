@@ -40,6 +40,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.remote.*;
+import org.openqa.selenium.remote.http.HttpMethod;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -47,7 +49,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import java.time.Duration;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -77,7 +79,7 @@ public class CustomButtonTests {
 		public void setup() {
 
 			driver = new ChromeDriver();
-			wait = new WebDriverWait(driver, Duration.ofSeconds(10));    // Changed from seconds to Duration in S4
+			wait = new WebDriverWait(driver, 10);    // Changed from seconds to Duration in S4
 
 			driver.get(String.format(CustomButtonTests.URLFORMATTER, CustomButtonTests.this.port));
 			driver.manage().window().maximize();
@@ -177,7 +179,7 @@ public class CustomButtonTests {
 		public void setup() {
 
 			driver = new ChromeDriver();
-			this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));	// Changed from seconds to Duration in S4
+			this.wait = new WebDriverWait(driver, 10);	// Changed from seconds to Duration in S4
 
 			injectClosedModeShadowDomOverride();	// Take this out if you want to see the last test to fail!
 
@@ -211,21 +213,42 @@ public class CustomButtonTests {
 		}
 
 		/**
-		 * Build and inject a script to run on page load. This uses the DevTool API through Selenium 4, with Chrome 86 or later to
-		 * be compatible with Selenium 4.
-		 * <p>
-		 * Hint: DevTools is actually behind the scenes in Selenium 3, so with a little work using reflection you may get something
-		 * similar to work if you really have to. I'm not going to bother, this method proves my point!
+		 * Build and inject a script to run on page load. This version is a hack using Reflection to call
+		 * internal methods in Selenium 3 to access the DevTools interface.
 		 */
-
 		private void injectClosedModeShadowDomOverride() {
 
 			String overrideScript = "Element.prototype._attachShadow = Element.prototype.attachShadow; "
 					+ "Element.prototype.attachShadow = function (reqMode) { return this._attachShadow({ mode: 'open' }) }";
 			Map<String, Object> parameters = new HashMap<String, Object>();
+			Map<String, Object> command = new HashMap<>();
 
 			parameters.put("source", overrideScript);
-			Map<String, Object> result = driver.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", parameters);
+			command.put("cmd", "Page.addScriptToEvaluateOnNewDocument");
+			command.put("params", parameters);
+
+			try {
+
+				// Set up sendCommand to talk to  DevTools.
+
+				CommandInfo cmd = new CommandInfo("/session/:sessionId/chromium/send_command_and_get_result", HttpMethod.POST);
+				Method defineCommand = HttpCommandExecutor.class.getDeclaredMethod("defineCommand", String.class, CommandInfo.class);
+				defineCommand.setAccessible(true);
+				defineCommand.invoke(((RemoteWebDriver) this.driver).getCommandExecutor(), "sendCommand", cmd);
+
+				// Set up the script to run using Page.addScriptToEvaluateOnNewDocument. The response is a map that
+				// provides the identifier for the script, which means it was set properly. We do not care, if the
+				// script is not set the test will fail.
+
+				Method execute = RemoteWebDriver.class.getDeclaredMethod("execute", String.class, Map.class);
+				execute.setAccessible(true);
+				execute.invoke(driver, "sendCommand", command);
+			}
+
+			catch (Throwable t) {
+
+				throw new RuntimeException(t);
+			}
 		}
 	}
 }
