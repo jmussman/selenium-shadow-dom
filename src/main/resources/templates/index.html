@@ -21,15 +21,20 @@
 		<h2>Description</h2>
 		<p>These three buttons are set up with no Shadow DOM, open-mode Shadow DOM, and closed-mode Shadow DOM.
 			The first button has a different background color, because the application.css file applies to it.
-			The other two buttons show with their default color backgrounds that they block application of the CSS,
-			which is the whole point of the Shadow DOM.</p>
+			The other two buttons show with their default color backgrounds that they use Shadow DOM to
+			block application of the application-wide CSS, which of course is the whole point of Shadow DOM.</p>
 		<p>These support these Selenium unit tests:</p>
 		<ul>
 			<li>Selenium can select an element anywhere in the Light DOM (the regular browser DOM).</li>
 			<li>Selenium cannot select into the component when there it has a Shadow DOM (this is a negative test).</li>
 			<li>Selenium can use JavaScript to find the root node in open-mode, and then find elements descending from that.</li>
 			<li>Selenium cannot select the root node in closed-mode (this is a negative test).</li>
+			<li>Selenium can inject JavaScript and override the <i>attachShadow</i> method from creating a closed root.</li>
 		</ul>
+		<p>This version uses Selenium 4 alpha.
+			Chrome is required, use Chrome 86+ to avoid warnings.
+			Of course ChromeDriver needs to be in your environment PATH variable for the tests to work, and
+			make sure that your ChromeDriver matches the version of Chrome you are using.</p>
 		<custom-button
 			id="custom-button-one"
 			shadow-mode="none"

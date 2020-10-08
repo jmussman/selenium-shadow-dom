@@ -17,8 +17,8 @@
 // that is subject to change based on the version of the browser and other things. The answer is to disable closed
 // shadow root in the application. To do that, we can override the function to attach the shadow root:
 //
-//		Element.prototype._attachShadow = Element.prototype.attachShadow;
-//		Element.prototype.attachShadow = (mode) => { return Element.prototype._attachShadow({ mode: 'open' });
+//		Element.prototype._attachShadow = Element.prototype.attachShadow
+//		Element.prototype.attachShadow = function (reqMode) => { return this._attachShadow({ mode: 'open' }) }
 //
 // The problem is, you have to get this executed before the web components are resolved on the page. there isn't any
 // way to do that from inside of Selenium, because there isn't any way to rewrite the page as it enters the browser.
@@ -32,19 +32,24 @@
 
 package com.wonderfulwidgets.examples.selshadowdom;
 
-import com.wonderfulwidgets.examples.selshadowdom.SelShadowDomApplication;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -52,96 +57,175 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes = { SelShadowDomApplication.class }, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class CustomButtonTests {
 
+	private static String URLFORMATTER = "http://localhost:%d/selshadowdom";
+
 	@LocalServerPort
 	private int port;
 
-	private String URL;
-	private WebDriver driver;
-	private WebDriverWait wait;
+	/**
+	 * These tests present the normal interaction with no Shadow DOM, open-mode Shadow DOM, and closed-mode
+	 * Shadow DOM.
+	 */
+	@Nested
+	@DisplayName("No shadow root, open-mode, and closed-mode shadow root")
+	class ShadowRoot {
 
-	@BeforeEach
-	public void setup() {
+		private ChromeDriver driver;
+		private WebDriverWait wait;
 
-		URL = String.format("http://localhost:%d/selshadowdom", port);
-		driver = new ChromeDriver();
-		wait = new WebDriverWait(driver, 10);
+		@BeforeEach
+		public void setup() {
 
-		driver.get(URL);
-		driver.manage().window().maximize();
+			driver = new ChromeDriver();
+			wait = new WebDriverWait(driver, Duration.ofSeconds(10));    // Changed from seconds to Duration in S4
+
+			driver.get(String.format(CustomButtonTests.URLFORMATTER, CustomButtonTests.this.port));
+			driver.manage().window().maximize();
+		}
+
+		/**
+		 * Comment out the driver.quit() if you want the browser to remain open after each test.
+		 */
+		@AfterEach
+		public void tearDown() {
+
+			driver.quit();
+		}
+
+		/**
+		 * The first button is in the Light DOM, so everything is reachable.
+		 */
+		@Test
+		public void selectsButtonInLightDom() {
+
+			wait.until(ExpectedConditions.presenceOfElementLocated(By.id("custom-button-one")));
+
+			WebElement button = driver.findElement(By.id("button-one"));
+
+			button.click();
+
+			assertEquals("id=button-one, no shadow-dom: selected!", button.getText());
+		}
+
+		/**
+		 * The second button is in a Shadow DOM, so Selenium cannot see it.
+		 */
+		@Test
+		public void cannotFindButtonInOpenShadowDom() {
+
+			wait.until(ExpectedConditions.presenceOfElementLocated(By.id("custom-button-two")));
+
+			assertThrows(NoSuchElementException.class, () -> {
+
+				WebElement button = driver.findElement(By.id("button-two"));
+			});
+		}
+
+		/**
+		 * JavaScript can be injected an run on the page to find the root node for the custom button.
+		 */
+		@Test
+		public void selectsButtonInShadowOpenDomUnderRoot() {
+
+			String customButtonId = "custom-button-two";
+
+			wait.until(ExpectedConditions.presenceOfElementLocated(By.id(customButtonId)));
+
+			WebElement customButton = driver.findElement(By.id(customButtonId));
+			WebElement shadowRoot = (WebElement) ((JavascriptExecutor) driver).executeScript("return arguments[0].shadowRoot", customButton);
+
+			WebElement button = shadowRoot.findElement(By.id("button-two"));
+
+			button.click();
+
+			assertEquals("id=button-two, open shadow-dom: selected!", button.getText());
+		}
+
+		/**
+		 * Even JavaScript cannot find the root for a "closed" node. See potential solutions described in the notes
+		 * at the top of the document.
+		 */
+		@Test
+		public void cannotFindRootInClosedShadowDom() {
+
+			String customButtonId = "custom-button-three";
+
+			wait.until(ExpectedConditions.presenceOfElementLocated(By.id(customButtonId)));
+
+			WebElement customButton = driver.findElement(By.id(customButtonId));
+			WebElement shadowRoot = (WebElement) ((JavascriptExecutor) driver).executeScript("return arguments[0].shadowRoot", customButton);
+
+			assertNull(shadowRoot);    // JavaScript returned null.
+		}
 	}
 
 	/**
-	 * Comment out the driver.quit() if you want the browser to remain open after each test.
+	 * These tests go around a closed-mode Shadow DOM by preventing it from being created in the first place (the
+	 * addition of the injectClosedMOdeShadowDomOverride() in setup).
 	 */
-	@AfterEach
-	public void tearDown() {
+	@Nested
+	@DisplayName("Override closed mode shadow root")
+	class ClosedModeOverride {
 
-		driver.quit();
-	}
+		private ChromeDriver driver;
+		private Wait wait;
 
-	/**
-	 * The first button is in the Light DOM, so everything is reachable.
-	 */
-	@Test
-	public void selectsButtonInLightDom() {
+		/**
+		 * This setup differes from the enclosing class in that it injects the orverride script.
+		 */
+		@BeforeEach
+		public void setup() {
 
-		wait.until(ExpectedConditions.presenceOfElementLocated(By.id("custom-button-one")));
+			driver = new ChromeDriver();
+			this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));	// Changed from seconds to Duration in S4
 
-		WebElement button = driver.findElement(By.id("button-one"));
+			injectClosedModeShadowDomOverride();	// Take this out if you want to see the last test to fail!
 
-		button.click();
+			driver.get(String.format(CustomButtonTests.URLFORMATTER, CustomButtonTests.this.port));
+			driver.manage().window().maximize();
+		}
 
-		assertEquals("id=button-one, no shadow-dom: selected!", button.getText());
-	}
+		/**
+		 * Comment out the driver.quit() if you want the browser to remain open after each test.
+		 */
+		@AfterEach
+		public void tearDown() {
 
-	/**
-	 * The second button is in a Shadow DOM, so Selenium cannot see it.
-	 */
-	@Test
-	public void cannotFindButtonInOpenShadowDom() {
+			driver.quit();
+		}
 
-		wait.until(ExpectedConditions.presenceOfElementLocated(By.id("custom-button-two")));
+		@Test
+		public void canOverrideClosedShadowDom() {
 
-		assertThrows(NoSuchElementException.class, () -> {
+			String customButtonId = "custom-button-three";
 
-			WebElement button = driver.findElement(By.id("button-two"));
-		});
-	}
+			wait.until(ExpectedConditions.presenceOfElementLocated(By.id(customButtonId)));
 
-	/**
-	 * JavaScript can be injected an run on the page to find the root node for the custom button.
-	 */
-	@Test
-	public void selectsButtonInShadowOpenDomUnderRoot() {
+			WebElement customButton = driver.findElement(By.id(customButtonId));
+			WebElement shadowRoot = (WebElement) ((JavascriptExecutor) driver).executeScript("return arguments[0].shadowRoot", customButton);
+			WebElement button = shadowRoot.findElement(By.id("button-three"));
 
-		String customButtonId = "custom-button-two";
+			button.click();
 
-		wait.until(ExpectedConditions.presenceOfElementLocated(By.id(customButtonId)));
+			assertEquals("id=button-three, closed shadow-dom: selected!", button.getText());
+		}
 
-		WebElement customButton = driver.findElement(By.id(customButtonId));
-		WebElement shadowRoot = (WebElement)((JavascriptExecutor)driver).executeScript("return arguments[0].shadowRoot", customButton);
+		/**
+		 * Build and inject a script to run on page load. This uses the DevTool API through Selenium 4, with Chrome 86 or later to
+		 * be compatible with Selenium 4.
+		 * <p>
+		 * Hint: DevTools is actually behind the scenes in Selenium 3, so with a little work using reflection you may get something
+		 * similar to work if you really have to. I'm not going to bother, this method proves my point!
+		 */
 
-		WebElement button = shadowRoot.findElement(By.id("button-two"));
+		private void injectClosedModeShadowDomOverride() {
 
-		button.click();
+			String overrideScript = "Element.prototype._attachShadow = Element.prototype.attachShadow; "
+					+ "Element.prototype.attachShadow = function (reqMode) { return this._attachShadow({ mode: 'open' }) }";
+			Map<String, Object> parameters = new HashMap<String, Object>();
 
-		assertEquals("id=button-two, open shadow-dom: selected!", button.getText());
-	}
-
-	/**
-	 * Even JavaScript cannot find the root for a "closed" node. See potential solutions described in the notes
-	 * at the top of the document.
-	 */
-	@Test
-	public void cannotFindRootInClosedShadowDom() {
-
-		String customButtonId = "custom-button-three";
-
-		wait.until(ExpectedConditions.presenceOfElementLocated(By.id(customButtonId)));
-
-		WebElement customButton = driver.findElement(By.id(customButtonId));
-		WebElement shadowRoot = (WebElement)((JavascriptExecutor)driver).executeScript("return arguments[0].shadowRoot", customButton);
-
-		assertNull(shadowRoot);	// JavaScript returned null.
+			parameters.put("source", overrideScript);
+			Map<String, Object> result = driver.executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", parameters);
+		}
 	}
 }
