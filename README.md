@@ -10,7 +10,7 @@
 ## Introduction
 
 This project consists of JUnit 5 tests using Selenium 4 driving custom web elements that use Shadow DOM.
-Custom elements used the "Shadow DOM" to block the application from directly accessing their internal elements.
+Custom elements use the "Shadow DOM" to block the application from directly accessing their internal elements.
 CSS selectors and JavaScript element locator functions will not pass the shadow root node at the head of
 a Shadow DOM, so CSS and JavaScript will not inadvertently change the internal workings of a custom element.
 
